@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_URL = "https://node-server-p4ifwkck8-koushik2906ajets-projects.vercel.app/update-location"; // Replace with deployed backend URL
+const API_URL = "https://node-server-bus-koushik2906ajets-projects.vercel.app/update-location"; // Replace with deployed backend URL
 
 export default function DriverApp() {
   const [location, setLocation] = useState(null);
