@@ -1,64 +1,65 @@
 import { useState, useEffect } from "react";
-import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
+import axios from "axios";
 
-const mapContainerStyle = { width: "100%", height: "400px" };
-const defaultCenter = { lat: 20.5937, lng: 78.9629 }; // Default to India
+const API_URL = "https://node-server-p4ifwkck8-koushik2906ajets-projects.vercel.app/update-location"; // Replace with deployed backend URL
 
-export default function LocationMap() {
+export default function DriverApp() {
   const [location, setLocation] = useState(null);
   const [status, setStatus] = useState("Requesting location...");
-  const [error, setError] = useState(null);
 
+  // ✅ Get the location
   const getLocation = () => {
-    if ("geolocation" in navigator) {
-      setStatus("Requesting location...");
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lng: longitude });
-          setStatus("Location Granted ✅");
-        },
-        (err) => {
-          setStatus("Location Denied ❌. Tap to retry.");
-          setError(err.message);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      setStatus("Geolocation Not Supported ❌");
+    if (!navigator.geolocation) {
+      setStatus("❌ Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocation({ latitude, longitude });
+        setStatus("✅ Location Granted");
+
+        // Send location immediately
+        sendLocationToServer(latitude, longitude);
+      },
+      (error) => {
+        setStatus(`❌ Location Error: ${error.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 50000, maximumAge: 0 }
+    );
+  };
+
+  // ✅ Send location to backend
+  const sendLocationToServer = async (latitude, longitude) => {
+    try {
+      await axios.post(API_URL, { latitude, longitude });
+      console.log("📡 Location sent to server:", { latitude, longitude });
+    } catch (error) {
+      console.error("❌ Error sending location:", error);
     }
   };
 
   useEffect(() => {
-    getLocation();
+    getLocation(); // Get initial location when the component loads
 
-    window.addEventListener("load", getLocation);
-    return () => {
-      window.removeEventListener("load", getLocation);
-    };
+    // Re-fetch and send location every 30 seconds
+    const interval = setInterval(() => {
+      getLocation(); // Re-fetch location every 30 seconds
+    }, 30000); // 30 seconds (30,000 ms)
+
+    return () => clearInterval(interval); // Cleanup on unmount
   }, []);
 
   return (
-    <div
-      className="flex flex-col items-center p-6 border rounded-lg shadow-lg max-w-md mx-auto"
-      onClick={getLocation} // Allows retry on click
-    >
-      <h2 className="text-xl font-bold">Location Tracker</h2>
+    <div className="flex flex-col items-center p-6 border rounded-lg shadow-lg max-w-md mx-auto">
+      <h2 className="text-xl font-bold">Driver Location Tracker 🚖</h2>
       <p className="mt-2">{status}</p>
-      {location ? (
-        <>
-          <p className="mt-2">
-            <strong>Latitude:</strong> {location.lat} <br />
-            <strong>Longitude:</strong> {location.lng}
-          </p>
-          <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}>
-            <GoogleMap mapContainerStyle={mapContainerStyle} center={location} zoom={15}>
-              <Marker position={location} />
-            </GoogleMap>
-          </LoadScript>
-        </>
-      ) : (
-        error && <p className="mt-2 text-red-500">{error}</p>
+      {location && (
+        <p className="mt-2">
+          <strong>Latitude:</strong> {location.latitude} <br />
+          <strong>Longitude:</strong> {location.longitude}
+        </p>
       )}
     </div>
   );
